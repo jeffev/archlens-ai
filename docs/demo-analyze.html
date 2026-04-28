@@ -30,8 +30,8 @@
     .chip { padding: 3px 10px; background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; font-size: 12px; color: #94a3b8; }
 
     #cy { width: 100%; height: 100%; }
-    .view { display: none; }
-    .view.active { display: flex; }
+    .view { display: none !important; }
+    .view.active { display: flex !important; }
 
     .demo-banner {
       background: rgba(99,102,241,.12); border-bottom: 1px solid rgba(99,102,241,.25);
@@ -87,7 +87,7 @@
   </div>
 
   <!-- ESTADO ATUAL TAB -->
-  <div id="view-current" class="view" style="flex:1;overflow:hidden;display:flex;">
+  <div id="view-current" class="view" style="flex:1;overflow:hidden;">
     <div class="panel-scroll" style="width:240px;flex-shrink:0;border-right:1px solid #0f172a;padding:10px 8px;" id="module-list"></div>
     <div id="module-detail" class="panel-scroll" style="flex:1;padding:20px 24px;"></div>
   </div>
@@ -194,9 +194,11 @@ function buildGraph() {
       }},
       { selector: 'node:selected', style: { 'border-color': '#6366f1', 'border-width': 3 } },
     ],
-    layout: { name: 'breadthfirst', directed: true, padding: 60, spacingFactor: 1.8 },
+    layout: { name: 'breadthfirst', directed: true, padding: 80, spacingFactor: 1.4 },
     userZoomingEnabled: true, userPanningEnabled: true,
   })
+
+  cy1.ready(() => cy1.fit(undefined, 80))
 
   cy1.on('tap', 'node', e => {
     const n = e.target.data('node')
@@ -254,8 +256,9 @@ function buildGraph2() {
         'target-arrow-shape': 'triangle', 'curve-style': 'bezier', 'arrow-scale': 0.8
       }},
     ],
-    layout: { name: 'cose', padding: 60, nodeRepulsion: 8000 },
+    layout: { name: 'cose', padding: 80, nodeRepulsion: 8000 },
   })
+  cy2.ready(() => cy2.fit(undefined, 80))
 }
 
 // ── Module list ───────────────────────────────────────────────────────────────
@@ -417,11 +420,10 @@ function switchTab(name) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'))
   document.getElementById('tab-'+name).classList.add('active')
-  const view = document.getElementById('view-'+name)
-  view.classList.add('active')
+  document.getElementById('view-'+name).classList.add('active')
   if (name === 'suggested') buildGraph2()
-  if (name === 'sistema' && cy1) setTimeout(() => cy1.resize(), 50)
-  if (name === 'suggested' && cy2) setTimeout(() => cy2.resize(), 50)
+  if (name === 'sistema' && cy1) setTimeout(() => { cy1.resize(); cy1.fit(undefined, 80) }, 50)
+  if (name === 'suggested' && cy2) setTimeout(() => { cy2.resize(); cy2.fit(undefined, 80) }, 50)
 }
 </script>
 </body>

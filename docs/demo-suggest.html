@@ -28,8 +28,8 @@
 
     #cy  { width: 100%; height: 100%; }
     #cy2 { width: 100%; height: 100%; }
-    .view { display: none; }
-    .view.active { display: flex; }
+    .view { display: none !important; }
+    .view.active { display: flex !important; }
 
     .demo-banner {
       background: rgba(16,185,129,.1); border-bottom: 1px solid rgba(16,185,129,.2);
@@ -83,7 +83,7 @@
   </div>
 
   <!-- ESTADO ATUAL (naive modules) -->
-  <div id="view-current" class="view" style="flex:1;overflow:hidden;display:flex;">
+  <div id="view-current" class="view" style="flex:1;overflow:hidden;">
     <div class="panel-scroll" style="width:240px;flex-shrink:0;border-right:1px solid #0f172a;padding:10px 8px;" id="module-list"></div>
     <div id="module-detail" class="panel-scroll" style="flex:1;padding:20px 24px;"></div>
   </div>
@@ -224,8 +224,9 @@ function buildGraph1() {
   cy1 = mkCy(
     document.getElementById('cy'),
     NAIVE_NODES, NAIVE_EDGES,
-    { name:'breadthfirst', directed:true, padding:70, spacingFactor:1.8 }
+    { name:'breadthfirst', directed:true, padding:80, spacingFactor:1.4 }
   )
+  cy1.ready(() => cy1.fit(undefined, 80))
 }
 
 function buildGraph2() {
@@ -233,8 +234,9 @@ function buildGraph2() {
   cy2 = mkCy(
     document.getElementById('cy2'),
     PROPOSED_NODES, PROPOSED_EDGES,
-    { name:'cose', padding:60, nodeRepulsion:9000, nodeOverlap:16 }
+    { name:'cose', padding:80, nodeRepulsion:9000, nodeOverlap:16 }
   )
+  cy2.ready(() => cy2.fit(undefined, 80))
 }
 
 // ── Module list ───────────────────────────────────────────────────────────────
@@ -381,8 +383,8 @@ function switchTab(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'))
   document.getElementById('tab-'+name).classList.add('active')
   document.getElementById('view-'+name).classList.add('active')
-  if (name === 'suggested') { buildGraph2(); setTimeout(() => cy2 && cy2.resize(), 50) }
-  if (name === 'sistema' && cy1) setTimeout(() => cy1.resize(), 50)
+  if (name === 'suggested') { buildGraph2(); setTimeout(() => { cy2 && cy2.resize(); cy2 && cy2.fit(undefined, 80) }, 50) }
+  if (name === 'sistema' && cy1) setTimeout(() => { cy1.resize(); cy1.fit(undefined, 80) }, 50)
 }
 </script>
 </body>
