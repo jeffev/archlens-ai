@@ -1,0 +1,59 @@
+{
+  "name": "archlens-ai",
+  "version": "0.1.0",
+  "description": "Interactive architecture visualization powered by Claude Code",
+  "type": "module",
+  "bin": {
+    "archlens-ai": "./dist/cli.js",
+    "archlens": "./dist/cli.js"
+  },
+  "files": [
+    "dist/cli.js",
+    "install.sh",
+    "install.ps1",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jeffev/archlens-ai.git"
+  },
+  "homepage": "https://jeffev.github.io/archlens-ai",
+  "bugs": {
+    "url": "https://github.com/jeffev/archlens-ai/issues"
+  },
+  "keywords": [
+    "architecture",
+    "visualization",
+    "claude",
+    "ai",
+    "cli",
+    "diagram",
+    "static-analysis"
+  ],
+  "author": "Jefferson Valandro",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js",
+    "prepublishOnly": "npm run build",
+    "setup": "npm install && npm run build && npm link && node -e \"console.log('\\n✓ archlens-ai instalado! Teste com: archlens-ai --help')\""
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "fast-glob": "^3.3.2",
+    "madge": "^8.0.0",
+    "open": "^10.1.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "cytoscape": "^3.33.2",
+    "tsup": "^8.3.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

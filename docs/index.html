@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>archlens-ai — Architecture Visualization powered by Claude Code</title>
+  <meta name="description" content="Point archlens-ai at any codebase and get an interactive architecture report with a graph, health scores, anti-pattern detection, and refactoring suggestions — powered by Claude Code." />
+  <meta property="og:title" content="archlens-ai" />
+  <meta property="og:description" content="Interactive architecture visualization powered by Claude Code. One command, self-contained HTML report." />
+  <meta property="og:type" content="website" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #060b18;
+      --bg2:       #080d1a;
+      --bg3:       #0a0f1e;
+      --border:    #0f172a;
+      --border2:   #1e293b;
+      --text:      #e2e8f0;
+      --muted:     #64748b;
+      --dim:       #334155;
+      --accent:    #6366f1;
+      --accent-lt: #818cf8;
+      --accent-bg: rgba(99,102,241,.12);
+      --green:     #10b981;
+      --yellow:    #f59e0b;
+      --red:       #ef4444;
+      --purple:    #a855f7;
+      --orange:    #f97316;
+      --teal:      #14b8a6;
+    }
+
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: inherit; text-decoration: none; }
+    code, pre { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+
+    /* ── Nav ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      border-bottom: 1px solid var(--border);
+      background: rgba(6,11,24,.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 0 24px;
+      height: 56px;
+      display: flex; align-items: center; gap: 16px;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; letter-spacing: -.3px; }
+    .nav-links { display: flex; gap: 4px; margin-left: auto; }
+    .nav-link { padding: 6px 12px; border-radius: 6px; font-size: 13px; color: var(--muted); transition: all .15s; }
+    .nav-link:hover { color: var(--text); background: rgba(255,255,255,.04); }
+    .nav-cta {
+      padding: 7px 16px; border-radius: 7px; font-size: 13px; font-weight: 600;
+      background: var(--accent); color: #fff; transition: opacity .15s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .nav-cta:hover { opacity: .88; }
+
+    /* ── Hero ── */
+    .hero {
+      max-width: 920px; margin: 0 auto;
+      padding: 104px 24px 80px;
+      text-align: center;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 5px 14px; border-radius: 99px;
+      border: 1px solid rgba(99,102,241,.3);
+      background: rgba(99,102,241,.08);
+      font-size: 12px; font-weight: 600; color: var(--accent-lt);
+      margin-bottom: 28px; letter-spacing: .01em;
+    }
+    .hero-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+    h1 {
+      font-size: clamp(38px, 6.5vw, 68px);
+      font-weight: 800; letter-spacing: -.04em; line-height: 1.06;
+      margin-bottom: 22px;
+      background: linear-gradient(140deg, #e2e8f0 35%, #818cf8 75%, #a78bfa);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .hero-sub {
+      font-size: clamp(16px, 2.2vw, 19px);
+      color: var(--muted); max-width: 560px; margin: 0 auto 44px; line-height: 1.65;
+    }
+    .hero-actions { display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 26px; border-radius: 9px;
+      background: var(--accent); color: #fff;
+      font-size: 14px; font-weight: 600;
+      transition: all .15s; box-shadow: 0 0 28px rgba(99,102,241,.32);
+    }
+    .btn-primary:hover { opacity: .9; box-shadow: 0 0 36px rgba(99,102,241,.48); transform: translateY(-1px); }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 12px 26px; border-radius: 9px;
+      border: 1px solid var(--border2); color: var(--muted);
+      font-size: 14px; font-weight: 500;
+      transition: all .15s;
+    }
+    .btn-secondary:hover { color: var(--text); border-color: var(--dim); background: rgba(255,255,255,.03); }
+
+    /* ── Terminal ── */
+    .terminal-wrap { max-width: 700px; margin: 72px auto 0; }
+    .terminal {
+      background: var(--bg2); border: 1px solid var(--border2); border-radius: 13px;
+      overflow: hidden; box-shadow: 0 28px 72px rgba(0,0,0,.55);
+    }
+    .terminal-bar {
+      padding: 11px 16px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 7px;
+    }
+    .t-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+    .terminal-body { padding: 22px 24px; font-size: 13.5px; line-height: 2; }
+    .t-prompt { color: var(--green); }
+    .t-cmd    { color: var(--text); }
+    .t-dim    { color: var(--dim); }
+    .t-accent { color: var(--accent-lt); }
+    .t-green  { color: var(--green); }
+    .t-yellow { color: var(--yellow); }
+    .t-muted  { color: var(--muted); }
+
+    /* ── Section ── */
+    section { padding: 88px 24px; }
+    .section-inner { max-width: 1060px; margin: 0 auto; }
+    .section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em;
+      color: var(--accent-lt); margin-bottom: 12px;
+    }
+    h2 {
+      font-size: clamp(26px, 3.5vw, 40px); font-weight: 800; letter-spacing: -.03em;
+      line-height: 1.13; margin-bottom: 16px;
+    }
+    .section-sub { font-size: 16px; color: var(--muted); max-width: 520px; line-height: 1.65; margin-bottom: 52px; }
+
+    /* ── Feature grid ── */
+    .feat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; }
+    .feat-card {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+      padding: 22px 24px; transition: border-color .2s, background .2s;
+    }
+    .feat-card:hover { border-color: var(--border2); background: var(--bg3); }
+    .feat-icon {
+      width: 38px; height: 38px; border-radius: 9px; border: 1px solid;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; margin-bottom: 14px; flex-shrink: 0;
+    }
+    .feat-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+    .feat-desc  { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+    /* ── Mode cards ── */
+    .mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 700px) { .mode-grid { grid-template-columns: 1fr; } }
+    .mode-card {
+      background: var(--bg2); border: 1px solid var(--border2); border-radius: 14px;
+      padding: 28px 28px 24px;
+    }
+    .mode-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+      padding: 3px 9px; border-radius: 5px; margin-bottom: 16px;
+    }
+    .mode-title { font-size: 18px; font-weight: 700; letter-spacing: -.02em; margin-bottom: 8px; }
+    .mode-desc  { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 18px; }
+    .mode-tabs  { display: flex; flex-wrap: wrap; gap: 6px; }
+    .mode-tab   {
+      font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 5px;
+      background: var(--bg3); border: 1px solid var(--border2); color: var(--muted);
+    }
+    .mode-cmd {
+      margin-top: 18px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; padding: 11px 15px; font-size: 12.5px;
+      color: var(--text); font-family: 'JetBrains Mono', monospace;
+    }
+    .mode-cmd .t-prompt { color: var(--green); }
+
+    /* ── Steps ── */
+    .steps { display: flex; flex-direction: column; gap: 0; }
+    .step { display: flex; gap: 20px; padding: 28px 0; border-bottom: 1px solid var(--border); }
+    .step:last-child { border-bottom: none; }
+    .step-num {
+      width: 36px; height: 36px; border-radius: 9px; flex-shrink: 0;
+      background: var(--accent-bg); border: 1px solid rgba(99,102,241,.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; color: var(--accent-lt);
+    }
+    .step-title { font-size: 15px; font-weight: 600; margin-bottom: 5px; }
+    .step-desc  { font-size: 13px; color: var(--muted); line-height: 1.65; }
+
+    /* ── Code block ── */
+    .code-block {
+      background: var(--bg2); border: 1px solid var(--border2); border-radius: 10px;
+      padding: 20px 22px; font-size: 13px; line-height: 1.85; overflow-x: auto;
+    }
+    .code-comment { color: var(--dim); }
+    .code-key     { color: var(--accent-lt); }
+    .code-val     { color: var(--green); }
+    .code-str     { color: var(--yellow); }
+
+    /* ── Options table ── */
+    .opts-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .opts-table th { text-align: left; padding: 10px 14px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); border-bottom: 1px solid var(--border); }
+    .opts-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); color: var(--muted); vertical-align: top; }
+    .opts-table td:first-child { color: var(--accent-lt); font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: nowrap; }
+    .opts-table td:nth-child(2) { color: var(--dim); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .opts-table tr:last-child td { border-bottom: none; }
+
+    /* ── Tab list ── */
+    .tab-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+    .tab-item {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 16px 18px; transition: all .2s;
+    }
+    .tab-item:hover { border-color: var(--border2); background: var(--bg3); }
+    .tab-name { font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+    .tab-mode { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--dim); margin-bottom: 6px; }
+    .tab-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border); padding: 32px 24px;
+      text-align: center; font-size: 13px; color: var(--dim);
+    }
+    footer a { color: var(--muted); transition: color .15s; }
+    footer a:hover { color: var(--text); }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .nav-link { display: none; }
+      .hero { padding: 72px 20px 60px; }
+      .config-grid { grid-template-columns: 1fr !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">
+      <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+        <rect width="22" height="22" rx="6" fill="#6366f1"/>
+        <path d="M6 11L11 6L16 11L11 16Z" stroke="white" stroke-width="1.5" fill="none"/>
+        <circle cx="11" cy="11" r="2" fill="white"/>
+      </svg>
+      archlens-ai
+    </div>
+    <div class="nav-links">
+      <a href="#modes" class="nav-link">Modes</a>
+      <a href="#features" class="nav-link">Features</a>
+      <a href="#how-it-works" class="nav-link">How it works</a>
+      <a href="#config" class="nav-link">Config</a>
+      <a href="https://github.com/jeffev/archlens-ai" class="nav-link">GitHub</a>
+      <a href="https://www.npmjs.com/package/archlens-ai" class="nav-cta">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M0 0v24h24V0H0zm19.2 19.2H4.8V4.8h14.4v14.4z"/><path d="M7.2 7.2h9.6v9.6h-2.4V9.6H12v7.2H7.2V7.2z"/></svg>
+        npm install
+      </a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">
+      <span class="hero-badge-dot"></span>
+      Powered by Claude Code
+    </div>
+    <h1>Your architecture,<br/>as a report</h1>
+    <p class="hero-sub">
+      Point <strong style="color:var(--text);">archlens-ai</strong> at any codebase — or just describe a system —
+      and get an interactive HTML report with an architecture graph, health scores,
+      anti-pattern detection, and refactoring suggestions.
+    </p>
+    <div class="hero-actions">
+      <a href="https://www.npmjs.com/package/archlens-ai" class="btn-primary">
+        npm install -g archlens-ai
+      </a>
+      <a href="https://github.com/jeffev/archlens-ai" class="btn-secondary">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+
+    <!-- Terminal -->
+    <div class="terminal-wrap">
+      <div class="terminal">
+        <div class="terminal-bar">
+          <div class="t-dot" style="background:#ef4444;"></div>
+          <div class="t-dot" style="background:#f59e0b;"></div>
+          <div class="t-dot" style="background:#10b981;"></div>
+          <span style="margin-left:8px;font-size:11px;color:var(--dim);font-family:'JetBrains Mono',monospace;">terminal</span>
+        </div>
+        <div class="terminal-body">
+          <div><span class="t-prompt">$</span> <span class="t-cmd">npx archlens-ai analyze ./my-project</span></div>
+          <div class="t-dim">&nbsp;</div>
+          <div class="t-dim">&nbsp;&nbsp;archlens-ai — /home/user/my-project</div>
+          <div class="t-dim">&nbsp;</div>
+          <div><span class="t-dim">&nbsp;&nbsp;Lendo estrutura</span> <span class="t-accent">············</span> <span class="t-muted">214 arquivos</span></div>
+          <div><span class="t-dim">&nbsp;&nbsp;Configuração</span> <span class="t-green">3 encontrados, 12 padrões detectados</span></div>
+          <div class="t-dim">&nbsp;&nbsp;Chamando Claude Code (2 fases)...</div>
+          <div><span class="t-dim">&nbsp;&nbsp;→</span> <span class="t-accent">8 tecnologias</span><span class="t-dim"> · </span><span class="t-accent">11 módulos</span></div>
+          <div><span class="t-dim">&nbsp;&nbsp;→ Health score:</span> <span class="t-yellow">72/100</span></div>
+          <div class="t-dim">&nbsp;</div>
+          <div><span class="t-green">&nbsp;&nbsp;Relatório: ~/archlens-reports/my-project.html</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODES -->
+  <section id="modes" style="border-top:1px solid var(--border);">
+    <div class="section-inner">
+      <div class="section-label">Two modes</div>
+      <h2>Analyze what exists.<br/>Design what doesn't.</h2>
+      <p class="section-sub">Works with any existing codebase or from a plain description — no code required.</p>
+
+      <div class="mode-grid">
+        <div class="mode-card">
+          <div class="mode-tag" style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);color:var(--accent-lt);">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            Analyze
+          </div>
+          <div class="mode-title">Existing project</div>
+          <div class="mode-desc">Point at any codebase. archlens-ai scans your files, builds a dependency graph, and asks Claude to analyze your tech stack and module structure.</div>
+          <div class="mode-tabs">
+            <span class="mode-tab" style="color:var(--accent-lt);">Sistema</span>
+            <span class="mode-tab" style="color:var(--green);">Estado Atual</span>
+            <span class="mode-tab" style="color:var(--teal);">Sugerido</span>
+            <span class="mode-tab" style="color:var(--yellow);">Diff</span>
+            <span class="mode-tab" style="color:var(--red);">Ciclos</span>
+            <span class="mode-tab" style="color:var(--purple);">Qualidade</span>
+          </div>
+          <div class="mode-cmd"><span class="t-prompt">$</span> archlens-ai analyze ./my-project</div>
+        </div>
+
+        <div class="mode-card">
+          <div class="mode-tag" style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);color:#34d399;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Suggest
+          </div>
+          <div class="mode-title">Greenfield design</div>
+          <div class="mode-desc">Describe a system in plain text. archlens-ai generates a complete architecture with a naive baseline, an optimized proposal, architectural decisions, and a phased roadmap.</div>
+          <div class="mode-tabs">
+            <span class="mode-tab" style="color:var(--accent-lt);">Sistema</span>
+            <span class="mode-tab" style="color:var(--green);">Estado Atual</span>
+            <span class="mode-tab" style="color:var(--teal);">Sugerido</span>
+            <span class="mode-tab" style="color:var(--yellow);">Diff</span>
+            <span class="mode-tab" style="color:var(--orange);">Decisões</span>
+            <span class="mode-tab" style="color:#60a5fa;">Roadmap</span>
+          </div>
+          <div class="mode-cmd"><span class="t-prompt">$</span> archlens-ai suggest "ride-hailing platform"</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+    <div class="section-inner">
+      <div class="section-label">Features</div>
+      <h2>Everything you need to<br/>understand your architecture</h2>
+      <p class="section-sub">One command. A self-contained HTML file you can share, open offline, and explore interactively.</p>
+
+      <div class="feat-grid">
+        <div class="feat-card">
+          <div class="feat-icon" style="border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.08);color:#818cf8;">⬡</div>
+          <div class="feat-title">Interactive Graph</div>
+          <div class="feat-desc">Cytoscape.js diagram with force/tree/ring layouts, real-time search, neighbor highlight, breadcrumb navigation, and click-to-inspect panels.</div>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon" style="border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.08);color:#34d399;">◈</div>
+          <div class="feat-title">Tech Stack Map</div>
+          <div class="feat-desc">Frameworks, databases, caches, and brokers in enterprise-style grouped containers. Protocol-colored edges (HTTP, gRPC, AMQP, Redis). Issues and suggestions per node.</div>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.08);color:#fbbf24;">⚡</div>
+          <div class="feat-title">Anti-Pattern Detection</div>
+          <div class="feat-desc">God Class, Feature Envy, Shotgun Surgery, Data Clump, Dead Code, Primitive Obsession — with severity rating and exact affected modules.</div>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon" style="border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.08);color:#60a5fa;">▦</div>
+          <div class="feat-title">Module Scores</div>
+          <div class="feat-desc">0–100 per module with cohesion, coupling, and size breakdown. Worst modules bubble to the top of the Quality tab for quick triage.</div>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon" style="border-color:rgba(168,85,247,.3);background:rgba(168,85,247,.08);color:#c084fc;">↺</div>
+          <div class="feat-title">Circular Dependencies</div>
+          <div class="feat-desc">DFS cycle detection across all modules, highlighted in red with clickable paths and a how-to-fix guide (interface injection, shared module extraction).</div>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon" style="border-color:rgba(20,184,166,.3);background:rgba(20,184,166,.08);color:#2dd4bf;">✓</div>
+          <div class="feat-title">Test Coverage</div>
+          <div class="feat-desc">Correlates test files with modules, scores coverage, and ranks untested modules by business risk so you know exactly where to write tests first.</div>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon" style="border-color:rgba(249,115,22,.3);background:rgba(249,115,22,.08);color:#fb923c;">⊕</div>
+          <div class="feat-title">Suggested Architecture</div>
+          <div class="feat-desc">Concrete refactoring proposals with type (split/merge/create/remove), reason, impact level, and affected modules — shown in a diff overlay on the graph.</div>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon" style="border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.08);color:#34d399;">✦</div>
+          <div class="feat-title">Greenfield Mode</div>
+          <div class="feat-desc">Describe a system. Get a naive baseline, an optimized architecture, architectural decision records with pros/cons, and a phased implementation roadmap.</div>
+        </div>
+        <div class="feat-card">
+          <div class="feat-icon" style="border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.08);color:#818cf8;">⊞</div>
+          <div class="feat-title">Monorepo Support</div>
+          <div class="feat-desc">Detects workspaces under packages/, apps/, services/. Analyzes each independently and generates a consolidated health dashboard with aggregate stats.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how-it-works">
+    <div class="section-inner">
+      <div class="section-label">How it works</div>
+      <h2>Four steps from<br/>code to insight</h2>
+      <p class="section-sub">No config required. No cloud upload. Everything runs locally through your Claude Code CLI.</p>
+
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div>
+            <div class="step-title">Scan</div>
+            <div class="step-desc">fast-glob walks your project, builds an import graph from source files, reads config files (package.json, docker-compose, application.yml), and detects technology patterns across your stack. A progress bar shows file count in real time.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div>
+            <div class="step-title">Macro prompt → tech stack</div>
+            <div class="step-desc">Claude Code analyzes your infrastructure: frameworks, databases, caches, message brokers. It identifies real issues (misconfigured connection pools, missing DLQs, unconfigured TTLs) and gives actionable suggestions per node.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div>
+            <div class="step-title">Micro prompt → module structure</div>
+            <div class="step-desc">Using the macro result as context, Claude Code maps source files into logical modules, scores cohesion and coupling, detects anti-patterns, and proposes a refactored architecture with concrete, reasoned changes.</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <div>
+            <div class="step-title">Render → self-contained HTML</div>
+            <div class="step-desc">A single HTML file is written to <code style="color:var(--accent-lt);">~/archlens-reports/</code> with Cytoscape.js embedded — no server, no dependencies, opens in any browser offline. Share it as an attachment, commit to the repo, or link in a PR.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONFIG -->
+  <section id="config" style="background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+    <div class="section-inner">
+      <div class="section-label">Configuration</div>
+      <h2>Zero config by default.<br/>Powerful when you need it.</h2>
+      <p class="section-sub">Drop a <code style="color:var(--accent-lt);">.archlens.json</code> at your project root. CLI flags always take precedence.</p>
+
+      <div class="config-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start;">
+        <div>
+          <div style="font-size:12px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">.archlens.json</div>
+          <div class="code-block">
+<span class="code-key">{</span><br/>
+&nbsp;&nbsp;<span class="code-key">"ignore"</span>: [<span class="code-str">"dist"</span>, <span class="code-str">"coverage"</span>],<br/>
+&nbsp;&nbsp;<span class="code-key">"depth"</span>: <span class="code-str">"deep"</span>,<br/>
+&nbsp;&nbsp;<span class="code-key">"lang"</span>: <span class="code-str">"en"</span>,<br/>
+&nbsp;&nbsp;<span class="code-key">"profile"</span>: <span class="code-str">"architecture"</span>,<br/>
+&nbsp;&nbsp;<span class="code-key">"minScore"</span>: <span class="code-val">60</span><br/>
+<span class="code-key">}</span>
+          </div>
+
+          <div style="margin-top:24px;">
+            <div style="font-size:12px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">CI quality gate</div>
+            <div class="code-block">
+<span class="code-comment"># .github/workflows/archlens.yml</span><br/>
+- name: Architecture quality gate<br/>
+&nbsp;&nbsp;run: npx archlens-ai analyze . \<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;--min-score 70 --no-open<br/><br/>
+<span class="code-comment"># Exit 1 when score &lt; 70 — blocks the merge</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:11px;">
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:17px 19px;">
+            <div style="font-size:13px;font-weight:600;color:var(--accent-lt);margin-bottom:5px;">--profile architecture</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.6;">Default. Module cohesion, coupling, dependency structure, and concrete refactoring proposals.</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:17px 19px;">
+            <div style="font-size:13px;font-weight:600;color:var(--red);margin-bottom:5px;">--profile security</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.6;">OWASP Top 10 focus — auth gaps, injection risks, exposed secrets, missing rate limits, vulnerable dependencies.</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:17px 19px;">
+            <div style="font-size:13px;font-weight:600;color:var(--yellow);margin-bottom:5px;">--profile performance</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.6;">N+1 queries, missing pagination, sync blocking I/O, caching opportunities, missing indexes.</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:17px 19px;">
+            <div style="font-size:13px;font-weight:600;color:var(--green);margin-bottom:5px;">--depth deep</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.6;">Reads up to 3KB of key file contents and includes them in the Claude prompt for richer, more precise analysis.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TABS -->
+  <section style="padding:80px 24px;">
+    <div class="section-inner">
+      <div class="section-label">Report tabs</div>
+      <h2>Eight views,<br/>zero configuration</h2>
+      <p class="section-sub" style="margin-bottom:36px;">Every report is interactive — click to drill in, search nodes in real time, navigate with breadcrumbs.</p>
+      <div class="tab-list">
+        <div class="tab-item">
+          <div class="tab-mode">both modes</div>
+          <div class="tab-name" style="color:var(--accent-lt);">Sistema</div>
+          <div class="tab-desc">Tech stack graph in enterprise-style containers. Click a node for issues, suggestions, and related modules.</div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-mode">both modes</div>
+          <div class="tab-name" style="color:var(--green);">Estado Atual</div>
+          <div class="tab-desc">Current module map. Health, responsibilities, scores, dependencies, and anti-patterns per module.</div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-mode">both modes</div>
+          <div class="tab-name" style="color:var(--teal);">Sugerido</div>
+          <div class="tab-desc">Proposed architecture with diff status (added / changed / removed) overlaid on the graph.</div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-mode">both modes</div>
+          <div class="tab-name" style="color:var(--yellow);">Diff</div>
+          <div class="tab-desc">Change cards — type, impact, reason, and affected modules. Scrollable bottom panel.</div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-mode">analyze only</div>
+          <div class="tab-name" style="color:var(--red);">Ciclos</div>
+          <div class="tab-desc">Circular dependency detection. Cycles highlighted in red with fix guidance and clickable modules.</div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-mode">analyze only</div>
+          <div class="tab-name" style="color:var(--purple);">Qualidade</div>
+          <div class="tab-desc">Anti-patterns, module score ranking, and test coverage priorities — all in one panel.</div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-mode">suggest only</div>
+          <div class="tab-name" style="color:var(--orange);">Decisões</div>
+          <div class="tab-desc">Architectural decision records — why each technology or boundary was chosen, with honest pros, cons, and alternatives.</div>
+        </div>
+        <div class="tab-item">
+          <div class="tab-mode">suggest only</div>
+          <div class="tab-name" style="color:#60a5fa;">Roadmap</div>
+          <div class="tab-desc">Phased implementation plan with realistic durations, concrete steps, and which modules are delivered per phase.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section style="background:var(--bg2);border-top:1px solid var(--border);padding:96px 24px;">
+    <div class="section-inner" style="text-align:center;max-width:580px;margin:0 auto;">
+      <h2>One command.<br/>Works on any project.</h2>
+      <p class="section-sub" style="margin:16px auto 32px;">No config required. Requires Claude Code CLI and Node.js 18+.</p>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:14px;">
+        <div style="background:var(--bg);border:1px solid var(--border2);border-radius:10px;padding:14px 26px;font-size:14px;font-family:'JetBrains Mono',monospace;">
+          <span style="color:var(--green);">$</span> <span style="color:var(--text);">npx archlens-ai analyze ./my-project</span>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+          <a href="https://www.npmjs.com/package/archlens-ai" class="btn-primary">
+            Get started →
+          </a>
+          <a href="https://github.com/jeffev/archlens-ai" class="btn-secondary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+            View source
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>
+      <a href="https://www.npmjs.com/package/archlens-ai">archlens-ai</a>
+      &nbsp;·&nbsp;
+      Built with <a href="https://claude.ai/code">Claude Code</a>
+      &nbsp;·&nbsp;
+      <a href="https://github.com/jeffev/archlens-ai">GitHub</a>
+      &nbsp;·&nbsp;
+      MIT License
+    </p>
+  </footer>
+
+</body>
+</html>
