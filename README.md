@@ -32,21 +32,47 @@ npx archlens-ai analyze ./my-project
 
 ## Requirements
 
-- **[Claude Code](https://claude.ai/code)** — installed and authenticated (`claude` available in your PATH)
+- **[Claude Code](https://claude.ai/code)** — installed and authenticated (`claude` in your PATH)
 - **Node.js 18+**
 
 ---
 
 ## Install
 
+### 1. Install Claude Code
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+Authenticate once (opens browser):
+
+```bash
+claude
+```
+
+Verify it works:
+
+```bash
+claude --version
+```
+
+### 2. Install archlens-ai
+
 ```bash
 npm install -g archlens-ai
 ```
 
-Or run without installing:
+Or run without installing (always uses latest version):
 
 ```bash
 npx archlens-ai analyze ./my-project
+```
+
+### 3. Verify
+
+```bash
+archlens-ai --version
 ```
 
 ---
@@ -65,6 +91,12 @@ archlens-ai suggest "multi-tenant SaaS for invoice management with Stripe billin
 
 # Generate in English
 archlens-ai suggest "ride-hailing platform" --lang en
+
+# Security-focused analysis
+archlens-ai analyze ./my-project --profile security
+
+# Deep analysis (reads key file contents)
+archlens-ai analyze ./my-project --depth deep
 
 # Analyze monorepo
 archlens-ai analyze ./my-monorepo --monorepo

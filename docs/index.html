@@ -256,6 +256,7 @@
       archlens-ai
     </div>
     <div class="nav-links">
+      <a href="#install" class="nav-link">Install</a>
       <a href="#modes" class="nav-link">Modes</a>
       <a href="#features" class="nav-link">Features</a>
       <a href="#how-it-works" class="nav-link">How it works</a>
@@ -315,6 +316,89 @@
       </div>
     </div>
   </div>
+
+  <!-- INSTALL -->
+  <section id="install" style="border-top:1px solid var(--border);">
+    <div class="section-inner">
+      <div class="section-label">Get started</div>
+      <h2>Up and running<br/>in two steps</h2>
+      <p class="section-sub">archlens-ai runs locally — everything goes through your own Claude Code CLI. No cloud upload, no account needed beyond Claude.</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start;" class="config-grid">
+
+        <!-- Step 1 -->
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <div class="step-num">1</div>
+            <div style="font-size:15px;font-weight:600;">Install &amp; authenticate Claude Code</div>
+          </div>
+          <div class="code-block" style="line-height:2;">
+            <div><span style="color:var(--dim);"># Install Claude Code CLI</span></div>
+            <div><span style="color:var(--green);">$</span> <span style="color:var(--text);">npm install -g @anthropic-ai/claude-code</span></div>
+            <div>&nbsp;</div>
+            <div><span style="color:var(--dim);"># Authenticate (opens browser once)</span></div>
+            <div><span style="color:var(--green);">$</span> <span style="color:var(--text);">claude</span></div>
+            <div>&nbsp;</div>
+            <div><span style="color:var(--dim);"># Confirm it works</span></div>
+            <div><span style="color:var(--green);">$</span> <span style="color:var(--text);">claude --version</span></div>
+          </div>
+          <p style="font-size:12px;color:var(--dim);margin-top:10px;">Requires Node.js 18+ · <a href="https://claude.ai/code" style="color:var(--accent-lt);">claude.ai/code</a></p>
+        </div>
+
+        <!-- Step 2 -->
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <div class="step-num">2</div>
+            <div style="font-size:15px;font-weight:600;">Install archlens-ai &amp; run</div>
+          </div>
+          <div class="code-block" style="line-height:2;">
+            <div><span style="color:var(--dim);"># Install globally</span></div>
+            <div><span style="color:var(--green);">$</span> <span style="color:var(--text);">npm install -g archlens-ai</span></div>
+            <div>&nbsp;</div>
+            <div><span style="color:var(--dim);"># Or run without installing</span></div>
+            <div><span style="color:var(--green);">$</span> <span style="color:var(--text);">npx archlens-ai analyze ./my-project</span></div>
+            <div>&nbsp;</div>
+            <div><span style="color:var(--dim);"># Greenfield — no code needed</span></div>
+            <div><span style="color:var(--green);">$</span> <span style="color:var(--text);">archlens-ai suggest "e-commerce platform"</span></div>
+          </div>
+          <p style="font-size:12px;color:var(--dim);margin-top:10px;">Report saved to <code style="color:var(--accent-lt);">~/archlens-reports/</code> and opened automatically</p>
+        </div>
+
+      </div>
+
+      <!-- Common commands -->
+      <div style="margin-top:36px;">
+        <div style="font-size:12px;color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px;">Common commands</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:10px;">
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+            <div style="font-size:11px;color:var(--dim);margin-bottom:6px;font-weight:600;">Analyze current directory</div>
+            <code style="font-size:12.5px;color:var(--text);">archlens-ai analyze</code>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+            <div style="font-size:11px;color:var(--dim);margin-bottom:6px;font-weight:600;">Security profile</div>
+            <code style="font-size:12.5px;color:var(--text);">archlens-ai analyze . --profile security</code>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+            <div style="font-size:11px;color:var(--dim);margin-bottom:6px;font-weight:600;">Deep analysis (reads file contents)</div>
+            <code style="font-size:12.5px;color:var(--text);">archlens-ai analyze . --depth deep</code>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+            <div style="font-size:11px;color:var(--dim);margin-bottom:6px;font-weight:600;">Report in English</div>
+            <code style="font-size:12.5px;color:var(--text);">archlens-ai analyze . --lang en</code>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+            <div style="font-size:11px;color:var(--dim);margin-bottom:6px;font-weight:600;">Monorepo (packages/, apps/, services/)</div>
+            <code style="font-size:12.5px;color:var(--text);">archlens-ai analyze . --monorepo</code>
+          </div>
+          <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+            <div style="font-size:11px;color:var(--dim);margin-bottom:6px;font-weight:600;">CI quality gate</div>
+            <code style="font-size:12.5px;color:var(--text);">archlens-ai analyze . --min-score 70 --no-open</code>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
 
   <!-- MODES -->
   <section id="modes" style="border-top:1px solid var(--border);">
