@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>archlens-ai — ride-hailing platform (demo)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+  <script src="https://unpkg.com/cytoscape@3.29.2/dist/cytoscape.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; font-family: 'Inter', ui-sans-serif, system-ui; background: #060b18; color: #e2e8f0; -webkit-font-smoothing: antialiased; }
+    code { font-family: 'JetBrains Mono', monospace; }
+
+    .tab-btn { padding: 5px 13px; border-radius: 6px; font-size: 13px; font-weight: 500; border: 1px solid transparent; cursor: pointer; transition: all .15s; background: none; color: #475569; position: relative; }
+    .tab-btn.active { background: rgba(99,102,241,.15); color: #a5b4fc; border-color: rgba(99,102,241,.4); }
+    .tab-btn:not(.active):hover { color: #94a3b8; background: rgba(255,255,255,.04); }
+    .badge-count { position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; background: #6366f1; border-radius: 50%; font-size: 9px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; }
+
+    .panel-scroll { overflow-y: auto; scrollbar-width: thin; scrollbar-color: #1e293b transparent; }
+    .panel-scroll::-webkit-scrollbar { width: 3px; }
+    .panel-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 2px; }
+
+    .score-bar-track { height: 4px; border-radius: 2px; background: #0f172a; flex: 1; overflow: hidden; }
+    .score-bar-fill  { height: 100%; border-radius: 2px; }
+
+    .chip { padding: 3px 10px; background: #0f172a; border: 1px solid #1e293b; border-radius: 6px; font-size: 12px; color: #94a3b8; }
+
+    #cy  { width: 100%; height: 100%; }
+    #cy2 { width: 100%; height: 100%; }
+    .view { display: none; }
+    .view.active { display: flex; }
+
+    .demo-banner {
+      background: rgba(16,185,129,.1); border-bottom: 1px solid rgba(16,185,129,.2);
+      padding: 6px 16px; font-size: 12px; color: #34d399; display: flex; align-items: center; gap: 8px; flex-shrink: 0;
+    }
+
+    .phase-card { background: #0a0f1e; border: 1px solid #0f172a; border-radius: 10px; padding: 18px 20px; margin-bottom: 14px; }
+    .phase-num  { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 7px; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  </style>
+</head>
+<body style="display:flex;flex-direction:column;height:100%;">
+
+  <!-- DEMO BANNER -->
+  <div class="demo-banner">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+    Greenfield demo — generated from: <em style="color:#6ee7b7;">"ride-hailing platform with real-time matching and surge pricing"</em>
+    <a href="https://github.com/jeffev/archlens-ai" style="color:#6ee7b7;text-decoration:underline;margin-left:auto;">Get archlens-ai →</a>
+  </div>
+
+  <!-- HEADER -->
+  <header style="flex-shrink:0;height:52px;border-bottom:1px solid #0f172a;padding:0 16px;display:flex;align-items:center;gap:14px;background:#080d1a;">
+    <div style="display:flex;align-items:center;gap:7px;flex-shrink:0;">
+      <svg width="20" height="20" viewBox="0 0 22 22" fill="none"><rect width="22" height="22" rx="6" fill="#6366f1"/><path d="M6 11L11 6L16 11L11 16Z" stroke="white" stroke-width="1.5" fill="none"/><circle cx="11" cy="11" r="2" fill="white"/></svg>
+      <span style="font-weight:600;font-size:14px;color:#e2e8f0;letter-spacing:-.3px;">archlens-ai</span>
+    </div>
+    <div style="font-size:12px;">
+      <span style="color:#94a3b8;font-weight:500;">ride-hailing-platform</span>
+      <span style="margin:0 5px;color:#0f172a;">·</span>
+      <span style="color:#10b981;">greenfield</span>
+    </div>
+    <nav style="display:flex;gap:3px;">
+      <button class="tab-btn active" onclick="switchTab('sistema')" id="tab-sistema">Sistema</button>
+      <button class="tab-btn" onclick="switchTab('current')" id="tab-current">Estado Atual</button>
+      <button class="tab-btn" onclick="switchTab('suggested')" id="tab-suggested">Sugerido</button>
+      <button class="tab-btn" onclick="switchTab('diff')" id="tab-diff">Diff<span class="badge-count">5</span></button>
+      <button class="tab-btn" onclick="switchTab('decisions')" id="tab-decisions">Decisões<span class="badge-count">6</span></button>
+      <button class="tab-btn" onclick="switchTab('roadmap')" id="tab-roadmap">Roadmap<span class="badge-count">3</span></button>
+    </nav>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+      <div style="font-size:11px;color:#475569;">Proposed health</div>
+      <div style="font-size:15px;font-weight:700;color:#10b981;">88<span style="font-size:10px;color:#475569;">/100</span></div>
+    </div>
+  </header>
+
+  <!-- SISTEMA TAB (naive baseline) -->
+  <div id="view-sistema" class="view active" style="flex:1;overflow:hidden;position:relative;">
+    <div id="cy" style="position:absolute;inset:0;"></div>
+    <div style="position:absolute;top:14px;left:14px;background:rgba(8,13,26,.9);border:1px solid #1e293b;border-radius:8px;padding:8px 14px;font-size:12px;color:#475569;">
+      <span style="color:#334155;">Naive baseline</span> — monolithic Node.js with direct dependencies
+    </div>
+  </div>
+
+  <!-- ESTADO ATUAL (naive modules) -->
+  <div id="view-current" class="view" style="flex:1;overflow:hidden;display:flex;">
+    <div class="panel-scroll" style="width:240px;flex-shrink:0;border-right:1px solid #0f172a;padding:10px 8px;" id="module-list"></div>
+    <div id="module-detail" class="panel-scroll" style="flex:1;padding:20px 24px;"></div>
+  </div>
+
+  <!-- SUGERIDO -->
+  <div id="view-suggested" class="view" style="flex:1;overflow:hidden;position:relative;">
+    <div id="cy2" style="position:absolute;inset:0;"></div>
+    <div style="position:absolute;top:14px;left:14px;background:rgba(8,13,26,.9);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:8px 14px;font-size:12px;color:#34d399;">
+      Optimized architecture — event-driven microservices
+    </div>
+  </div>
+
+  <!-- DIFF -->
+  <div id="view-diff" class="view" style="flex:1;overflow:hidden;">
+    <div class="panel-scroll" style="height:100%;padding:20px 24px;display:flex;flex-direction:column;gap:12px;" id="diff-list"></div>
+  </div>
+
+  <!-- DECISIONS -->
+  <div id="view-decisions" class="view" style="flex:1;overflow:hidden;">
+    <div class="panel-scroll" style="height:100%;padding:20px 24px;" id="decisions-content"></div>
+  </div>
+
+  <!-- ROADMAP -->
+  <div id="view-roadmap" class="view" style="flex:1;overflow:hidden;">
+    <div class="panel-scroll" style="height:100%;padding:20px 24px;" id="roadmap-content"></div>
+  </div>
+
+<script>
+const NAIVE_MODULES = [
+  { id:'mono', name:'MonolithicApp', score:34, color:'#ef4444', responsibilities:['User auth & profiles','Trip booking & matching','Driver management','Payment processing','Push notifications','Analytics & reporting'], cohesion:28, coupling:95, size:200, deps:[] },
+]
+
+const PROPOSED_MODULES = [
+  { id:'auth',    name:'AuthService',    score:88, color:'#10b981', responsibilities:['JWT issuance & refresh','OAuth2 social login','Driver license verification'], cohesion:90, coupling:15, size:42, deps:[] },
+  { id:'booking', name:'BookingService', score:82, color:'#6366f1', responsibilities:['Trip request lifecycle','Pickup/dropoff coordinates','ETA calculation'], cohesion:85, coupling:30, size:56, deps:['AuthService','MatchingService'] },
+  { id:'matching',name:'MatchingService',score:90, color:'#f59e0b', responsibilities:['Real-time driver proximity','Supply/demand scoring','Surge pricing engine'], cohesion:92, coupling:20, size:48, deps:['LocationService'] },
+  { id:'payments',name:'PaymentsService',score:86, color:'#a855f7', responsibilities:['Stripe charge & split','Driver payout (Stripe Connect)','Refund workflow'], cohesion:88, coupling:22, size:38, deps:['BookingService'] },
+  { id:'location',name:'LocationService',score:92, color:'#14b8a6', responsibilities:['Driver position ingestion','WebSocket push to riders','Geofencing'], cohesion:93, coupling:10, size:31, deps:[] },
+  { id:'notif',   name:'NotificationService',score:84, color:'#f97316', responsibilities:['Push via FCM','SMS via Twilio','In-app events via WebSocket'], cohesion:80, coupling:15, size:27, deps:[] },
+]
+
+const NAIVE_NODES = [
+  { id:'node1', label:'Node.js\n(Express)', color:'#10b981' },
+  { id:'pg1',   label:'PostgreSQL',         color:'#3b82f6' },
+  { id:'redis1',label:'Redis',              color:'#ef4444' },
+  { id:'gmaps1',label:'Google Maps',        color:'#f59e0b' },
+  { id:'stripe1',label:'Stripe',            color:'#6366f1' },
+  { id:'fcm1',  label:'Firebase FCM',       color:'#f97316' },
+]
+
+const NAIVE_EDGES = [
+  {s:'node1',t:'pg1'},{s:'node1',t:'redis1'},{s:'node1',t:'gmaps1'},{s:'node1',t:'stripe1'},{s:'node1',t:'fcm1'}
+]
+
+const PROPOSED_NODES = [
+  { id:'gw',      label:'API Gateway',        color:'#6366f1' },
+  { id:'auth2',   label:'AuthService',        color:'#10b981' },
+  { id:'booking2',label:'BookingService',     color:'#6366f1' },
+  { id:'match2',  label:'MatchingService',    color:'#f59e0b' },
+  { id:'pay2',    label:'PaymentsService',    color:'#a855f7' },
+  { id:'loc2',    label:'LocationService',    color:'#14b8a6' },
+  { id:'notif2',  label:'NotificationService',color:'#f97316' },
+  { id:'kafka2',  label:'Kafka',              color:'#334155' },
+  { id:'pg2',     label:'PostgreSQL',         color:'#3b82f6' },
+  { id:'redis2',  label:'Redis\n(Geo)',        color:'#ef4444' },
+  { id:'stripe2', label:'Stripe',             color:'#6366f1' },
+  { id:'fcm2',    label:'Firebase FCM',       color:'#f97316' },
+]
+
+const PROPOSED_EDGES = [
+  {s:'gw',t:'auth2'},{s:'gw',t:'booking2'},{s:'gw',t:'loc2'},
+  {s:'booking2',t:'kafka2'},{s:'match2',t:'kafka2'},{s:'pay2',t:'kafka2'},
+  {s:'kafka2',t:'notif2'},
+  {s:'loc2',t:'redis2'},{s:'match2',t:'redis2'},
+  {s:'booking2',t:'pg2'},{s:'pay2',t:'pg2'},{s:'auth2',t:'pg2'},
+  {s:'pay2',t:'stripe2'},{s:'notif2',t:'fcm2'},
+]
+
+const CHANGES = [
+  { type:'split',  impact:'critical', title:'Decompose monolith into 6 microservices', reason:'The single Express app couples real-time location tracking (sub-100ms latency requirement) with payment processing (strict consistency requirement). These have fundamentally incompatible scaling and reliability profiles.' },
+  { type:'create', impact:'high',     title:'Add Kafka for async event bus', reason:'Trip events (requested, matched, completed, cancelled) must be processed by 4+ consumers. Kafka decouples producers from consumers and provides replay capability for analytics.' },
+  { type:'create', impact:'high',     title:'Add Redis Geo for driver proximity', reason:'Standard PostgreSQL geo queries cannot handle 10,000 concurrent driver position updates per second with <50ms p99 latency. Redis Geo commands (GEOADD/GEORADIUS) are O(N+log M) and purpose-built for this.' },
+  { type:'create', impact:'medium',   title:'Add API Gateway layer', reason:'Auth, rate limiting, and routing cross-cut all services. Centralizing in an API Gateway avoids duplicating this logic and allows service-level traffic shaping.' },
+  { type:'modify', impact:'medium',   title:'Separate MatchingService from BookingService', reason:'Matching logic (proximity scoring, surge pricing) changes frequently and needs independent deployment. Keeping it separate allows ML model updates without redeploying the booking flow.' },
+]
+
+const DECISIONS = [
+  { title:'Kafka over RabbitMQ for event bus', status:'decided', pros:['Log retention for analytics replay','Consumer groups for independent service scaling','Exactly-once semantics with transactional producers'], cons:['Ops overhead — requires Zookeeper or KRaft','Higher message latency than RabbitMQ (ms vs µs)'], alternatives:['RabbitMQ — simpler ops, lower throughput ceiling','Google Pub/Sub — managed but vendor lock-in'] },
+  { title:'Redis Geo over PostGIS for driver locations', status:'decided', pros:['Atomic GEOADD handles 50k updates/sec','Sub-millisecond GEORADIUS queries','In-memory — no disk I/O on hot path'], cons:['No persistence guarantees (acceptable — GPS is real-time)','Less expressive than SQL spatial queries'], alternatives:['PostGIS — better for offline analytics, too slow for real-time matching'] },
+  { title:'Stripe Connect for driver payouts', status:'decided', pros:['Handles KYC/AML compliance','Instant payouts via Stripe Instant','No need to hold funds in escrow'], cons:['0.25% + $0.25 per payout','Stripe dictates payout timeline minimums'], alternatives:['Plaid + ACH — cheaper but 2-3 day settlement','In-house wallet — complex compliance burden'] },
+  { title:'Microservices over modular monolith', status:'decided', pros:['LocationService can scale to 100× without scaling payments','Independent deploy of surge pricing model'], cons:['Network latency between services','Distributed tracing required from day 1'], alternatives:['Modular monolith — viable for first 6 months, but location service will force extraction anyway'] },
+  { title:'React Native over Flutter for mobile', status:'decided', pros:['Larger talent pool','Code sharing with web via React Native Web','Mature Stripe and Maps SDK'], cons:['JSBridge performance ceiling for heavy animation','Expo managed workflow limitations'], alternatives:['Flutter — better animation, smaller ecosystem','Native — best performance, 2× dev cost'] },
+  { title:'PostgreSQL for transactional data', status:'decided', pros:['ACID guarantees for payments and trip state','PostGIS available for offline analytics','Familiar to most backend engineers'], cons:['Not ideal for event log (use Kafka instead)'], alternatives:['CockroachDB — geo-distributed, higher ops cost','DynamoDB — managed, but query model is restrictive'] },
+]
+
+const ROADMAP = [
+  { phase:1, title:'Core booking flow', duration:'8 weeks', deliverables:['AuthService + JWT','BookingService (request/accept/complete)','Basic matching (distance only)','Stripe charge + driver payout','React Native rider + driver apps (MVP)'], modules:['AuthService','BookingService','PaymentsService'] },
+  { phase:2, title:'Real-time & scaling', duration:'6 weeks', deliverables:['LocationService + Redis Geo','MatchingService with real-time proximity','Kafka event bus','WebSocket push to rider (ETA, driver location)','API Gateway with rate limiting'], modules:['LocationService','MatchingService','NotificationService'] },
+  { phase:3, title:'Surge pricing & analytics', duration:'4 weeks', deliverables:['Surge pricing engine (supply/demand ratio)','Trip analytics pipeline (Kafka → data warehouse)','Driver earnings dashboard','Fraud detection hooks via Stripe Radar'], modules:['MatchingService','all'] },
+]
+
+// ── Graphs ────────────────────────────────────────────────────────────────────
+let cy1, cy2
+
+window.addEventListener('DOMContentLoaded', () => {
+  buildGraph1()
+  buildModuleList()
+  buildDiff()
+  buildDecisions()
+  buildRoadmap()
+})
+
+function mkCy(container, nodes, edges, layout) {
+  const els = nodes.map(n => ({ data: { id: n.id, label: n.label, color: n.color } }))
+  edges.forEach((e,i) => els.push({ data: { id:'e'+i, source: e.s, target: e.t } }))
+  return cytoscape({
+    container,
+    elements: els,
+    style: [
+      { selector:'node', style: {
+        'background-color':'data(color)','label':'data(label)',
+        'color':'#e2e8f0','font-size':11,'text-valign':'bottom','text-margin-y':8,
+        'text-wrap':'wrap','text-max-width':80,'font-family':'Inter,sans-serif',
+        'width':40,'height':40,'border-width':2,'border-color':'rgba(255,255,255,.1)',
+        'text-background-color':'#060b18','text-background-opacity':0.85,'text-background-padding':3,
+      }},
+      { selector:'edge', style: {
+        'line-color':'#1e293b','width':1.5,'target-arrow-color':'#1e293b',
+        'target-arrow-shape':'triangle','curve-style':'bezier','arrow-scale':0.8
+      }},
+    ],
+    layout,
+    userZoomingEnabled:true, userPanningEnabled:true,
+  })
+}
+
+function buildGraph1() {
+  cy1 = mkCy(
+    document.getElementById('cy'),
+    NAIVE_NODES, NAIVE_EDGES,
+    { name:'breadthfirst', directed:true, padding:70, spacingFactor:1.8 }
+  )
+}
+
+function buildGraph2() {
+  if (cy2) return
+  cy2 = mkCy(
+    document.getElementById('cy2'),
+    PROPOSED_NODES, PROPOSED_EDGES,
+    { name:'cose', padding:60, nodeRepulsion:9000, nodeOverlap:16 }
+  )
+}
+
+// ── Module list ───────────────────────────────────────────────────────────────
+function buildModuleList() {
+  const list = document.getElementById('module-list')
+  const header = document.createElement('div')
+  header.style.cssText = 'font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#1e293b;padding:4px 8px 8px;'
+  header.textContent = 'Naive baseline'
+  list.appendChild(header)
+
+  NAIVE_MODULES.forEach((m,i) => {
+    const btn = document.createElement('button')
+    btn.className = 'list-row'
+    btn.id = 'mrow-'+m.id
+    btn.innerHTML = `
+      <div style="width:8px;height:8px;border-radius:50%;background:${m.color};flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12.5px;font-weight:500;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.name}</div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:3px;">
+          <div class="score-bar-track"><div class="score-bar-fill" style="width:${m.score}%;background:${m.score>70?'#10b981':m.score>50?'#f59e0b':'#ef4444'};"></div></div>
+          <span style="font-size:11px;font-weight:600;color:#ef4444;flex-shrink:0;">${m.score}</span>
+        </div>
+      </div>
+    `
+    btn.onclick = () => selectModule(m)
+    list.appendChild(btn)
+    if (i === 0) setTimeout(() => selectModule(m), 100)
+  })
+}
+
+function selectModule(m) {
+  document.querySelectorAll('.list-row').forEach(r => r.classList.remove('sel'))
+  const row = document.getElementById('mrow-'+m.id)
+  if (row) row.classList.add('sel')
+
+  const detail = document.getElementById('module-detail')
+  detail.innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:10px;height:10px;border-radius:50%;background:${m.color};"></div>
+          <h2 style="font-size:18px;font-weight:700;color:#e2e8f0;">${m.name}</h2>
+        </div>
+        <div style="font-size:12px;color:#334155;margin-top:4px;">${m.files ? m.files.length : m.responsibilities.length} responsibilities</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:28px;font-weight:800;color:#ef4444;">${m.score}</div>
+        <div style="font-size:10px;color:#334155;text-transform:uppercase;letter-spacing:.07em;">health score</div>
+      </div>
+    </div>
+    <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#fca5a5;">
+      This module is a monolith with 6 distinct responsibilities and coupling score 95/100. The proposed architecture splits it into 6 focused microservices.
+    </div>
+    <div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#334155;margin-bottom:10px;">Current responsibilities</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${m.responsibilities.map(r=>`<div style="padding:7px 11px;background:#0a0f1e;border:1px solid #0f172a;border-radius:6px;font-size:13px;color:#64748b;">${r}</div>`).join('')}
+      </div>
+    </div>
+  `
+}
+
+// ── Diff ──────────────────────────────────────────────────────────────────────
+function buildDiff() {
+  const colors = { split:'#6366f1', create:'#10b981', modify:'#f59e0b' }
+  const icons  = { split:'⊘', create:'⊕', modify:'◈' }
+  const container = document.getElementById('diff-list')
+  CHANGES.forEach(c => {
+    const card = document.createElement('div')
+    card.style.cssText = 'background:#0a0f1e;border:1px solid #0f172a;border-radius:10px;padding:18px 20px;'
+    card.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span style="background:${colors[c.type]}22;color:${colors[c.type]};padding:3px 10px;border-radius:5px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;">${icons[c.type]} ${c.type}</span>
+        <span style="background:${c.impact==='critical'?'#ef444422':c.impact==='high'?'#f59e0b22':'#6366f122'};color:${c.impact==='critical'?'#fca5a5':c.impact==='high'?'#fcd34d':'#a5b4fc'};padding:3px 10px;border-radius:5px;font-size:11px;font-weight:600;">${c.impact} impact</span>
+      </div>
+      <div style="font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:8px;">${c.title}</div>
+      <div style="font-size:13px;color:#64748b;line-height:1.65;">${c.reason}</div>
+    `
+    container.appendChild(card)
+  })
+}
+
+// ── Decisions ─────────────────────────────────────────────────────────────────
+function buildDecisions() {
+  const container = document.getElementById('decisions-content')
+  container.innerHTML = `<div style="max-width:720px;display:flex;flex-direction:column;gap:16px;">`
+
+  DECISIONS.forEach(d => {
+    const el = document.createElement('div')
+    el.style.cssText = 'background:#0a0f1e;border:1px solid #0f172a;border-radius:10px;padding:18px 20px;'
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span style="background:rgba(16,185,129,.1);color:#34d399;padding:3px 10px;border-radius:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;">✓ ${d.status}</span>
+        <div style="font-size:14px;font-weight:600;color:#e2e8f0;">${d.title}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#10b981;margin-bottom:7px;">Pros</div>
+          ${d.pros.map(p=>`<div style="font-size:12.5px;color:#64748b;padding:4px 0;border-bottom:1px solid #0f172a;">${p}</div>`).join('')}
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#ef4444;margin-bottom:7px;">Cons</div>
+          ${d.cons.map(c=>`<div style="font-size:12.5px;color:#64748b;padding:4px 0;border-bottom:1px solid #0f172a;">${c}</div>`).join('')}
+        </div>
+      </div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#334155;margin-bottom:7px;">Alternatives considered</div>
+      ${d.alternatives.map(a=>`<div style="font-size:12.5px;color:#475569;padding:3px 0;">${a}</div>`).join('')}
+    `
+    container.appendChild(el)
+  })
+}
+
+// ── Roadmap ───────────────────────────────────────────────────────────────────
+function buildRoadmap() {
+  const colors = ['#6366f1','#10b981','#f59e0b']
+  document.getElementById('roadmap-content').innerHTML = `
+    <div style="max-width:680px;">
+      <div style="font-size:13px;color:#475569;margin-bottom:20px;">Total estimated duration: <strong style="color:#e2e8f0;">18 weeks</strong></div>
+      ${ROADMAP.map((p,i) => `
+      <div class="phase-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <div class="phase-num" style="background:${colors[i]}22;border:1px solid ${colors[i]}44;color:${colors[i]};">${p.phase}</div>
+          <div>
+            <div style="font-size:15px;font-weight:600;color:#e2e8f0;">${p.title}</div>
+            <div style="font-size:12px;color:#475569;margin-top:2px;">${p.duration}</div>
+          </div>
+        </div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#334155;margin-bottom:8px;">Deliverables</div>
+        <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px;">
+          ${p.deliverables.map(d=>`<div style="display:flex;align-items:flex-start;gap:8px;font-size:12.5px;color:#64748b;"><span style="color:${colors[i]};flex-shrink:0;margin-top:1px;">✓</span>${d}</div>`).join('')}
+        </div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#334155;margin-bottom:7px;">Services delivered</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          ${p.modules.map(m=>`<span style="padding:3px 10px;background:${colors[i]}14;border:1px solid ${colors[i]}30;border-radius:6px;font-size:12px;color:${colors[i]};">${m}</span>`).join('')}
+        </div>
+      </div>`).join('')}
+    </div>
+  `
+}
+
+// ── Tab switch ────────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'))
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'))
+  document.getElementById('tab-'+name).classList.add('active')
+  document.getElementById('view-'+name).classList.add('active')
+  if (name === 'suggested') { buildGraph2(); setTimeout(() => cy2 && cy2.resize(), 50) }
+  if (name === 'sistema' && cy1) setTimeout(() => cy1.resize(), 50)
+}
+</script>
+</body>
+</html>

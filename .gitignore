@@ -1,7 +1,7 @@
 node_modules/
 dist/
 *.html
-!docs/index.html
+!docs/*.html
 .env
 .env.*
 *.log
