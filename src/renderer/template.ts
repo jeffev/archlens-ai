@@ -129,6 +129,10 @@ export function generateHTML(report: ArchlensReport, cytoscapeJs = ''): string {
     </div>
 
     <div style="margin-left:auto;display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <button id="btn-written" onclick="toggleWrittenReport()" title="Toggle written report" style="display:flex;align-items:center;gap:5px;padding:5px 11px;border-radius:6px;font-size:12px;font-weight:600;border:1px solid #1e293b;background:#0f172a;color:#475569;cursor:pointer;transition:all .15s;font-family:inherit;" onmouseover="if(!writtenMode){this.style.color='#94a3b8';this.style.borderColor='#334155';}" onmouseout="if(!writtenMode){this.style.color='#475569';this.style.borderColor='#1e293b';}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        Relatório
+      </button>
       <div style="text-align:right;">
         <div style="font-size:10px;color:#1e293b;margin-bottom:1px;">Health Score</div>
         <div style="font-size:16px;font-weight:700;" id="hdr-score">${report.healthScore}/100</div>
@@ -140,7 +144,12 @@ export function generateHTML(report: ArchlensReport, cytoscapeJs = ''): string {
   </header>
 
   <!-- MAIN -->
-  <div style="flex:1;display:flex;overflow:hidden;">
+  <div style="flex:1;display:flex;overflow:hidden;position:relative;">
+
+  <!-- WRITTEN REPORT OVERLAY -->
+  <div id="written-report" style="display:none;position:absolute;inset:0;overflow-y:auto;background:#060b18;z-index:50;scrollbar-width:thin;scrollbar-color:#1e293b transparent;">
+    <div id="written-content" style="max-width:820px;margin:0 auto;padding:48px 32px 80px;"></div>
+  </div>
 
     <!-- GRAPH AREA -->
     <div style="flex:1;position:relative;background:#060b18;">
@@ -351,6 +360,7 @@ export function generateHTML(report: ArchlensReport, cytoscapeJs = ''): string {
       </div>
 
     </div>
+  </div>
   </div>
 
   <!-- CHANGES PANEL (bottom) -->
@@ -1546,6 +1556,294 @@ export function generateHTML(report: ArchlensReport, cytoscapeJs = ''): string {
       changesOpen = !changesOpen;
       document.getElementById('changes-body').style.display = changesOpen ? 'block':'none';
       document.getElementById('changes-arrow').textContent = changesOpen ? '▾':'▸';
+    }
+
+    // ── Written report ────────────────────────────────────────────────────────
+    let writtenMode = false;
+    let writtenRendered = false;
+
+    function toggleWrittenReport() {
+      writtenMode = !writtenMode;
+      const overlay = document.getElementById('written-report');
+      const btn     = document.getElementById('btn-written');
+      overlay.style.display = writtenMode ? 'block' : 'none';
+      btn.style.color       = writtenMode ? '#a5b4fc' : '#475569';
+      btn.style.borderColor = writtenMode ? 'rgba(99,102,241,.4)' : '#1e293b';
+      btn.style.background  = writtenMode ? 'rgba(99,102,241,.15)' : '#0f172a';
+      if (writtenMode && !writtenRendered) { renderWrittenReport(); writtenRendered = true; }
+    }
+
+    function wrSec(title, body, icon) {
+      return '<div style="margin-bottom:44px;">'
+        + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid #0f172a;">'
+        + (icon ? '<span style="font-size:16px;">'+icon+'</span>' : '')
+        + '<h2 style="font-size:17px;font-weight:700;color:#e2e8f0;letter-spacing:-.02em;margin:0;">'+esc(title)+'</h2>'
+        + '</div>'
+        + body
+        + '</div>';
+    }
+
+    function wrCard(content, borderColor) {
+      return '<div style="background:#080d1a;border:1px solid '+(borderColor||'#0f172a')+';border-radius:10px;padding:18px 20px;margin-bottom:12px;">'+content+'</div>';
+    }
+
+    function wrLabel(text) {
+      return '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#334155;margin-bottom:7px;">'+esc(text)+'</div>';
+    }
+
+    function wrProse(text) {
+      return '<p style="font-size:14px;color:#64748b;line-height:1.75;margin:0;">'+esc(text)+'</p>';
+    }
+
+    function wrBullets(items, color) {
+      if (!items || !items.length) return '';
+      return '<ul style="list-style:none;display:flex;flex-direction:column;gap:5px;margin:0;padding:0;">'
+        + items.map(it => '<li style="display:flex;gap:8px;font-size:13px;color:#64748b;line-height:1.55;">'
+          + '<span style="color:'+(color||'#6366f1')+';flex-shrink:0;margin-top:2px;">›</span>'
+          + esc(it)+'</li>').join('')
+        + '</ul>';
+    }
+
+    function wrScoreBar(label, value, color) {
+      return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
+        + '<span style="font-size:12px;color:#475569;width:70px;flex-shrink:0;">'+esc(label)+'</span>'
+        + '<div style="flex:1;height:4px;background:#0f172a;border-radius:2px;overflow:hidden;">'
+        + '<div style="width:'+value+'%;height:100%;background:'+color+';border-radius:2px;"></div></div>'
+        + '<span style="font-size:12px;font-weight:700;color:'+color+';width:30px;text-align:right;">'+value+'</span>'
+        + '</div>';
+    }
+
+    function renderWrittenReport() {
+      const R = REPORT;
+      const isSuggest = R.project.type === 'System Design';
+      const { cycles } = getCycleData();
+      let html = '';
+
+      // ── Document header ──
+      const scoreColor = sColor(R.healthScore);
+      html += '<div style="border-bottom:2px solid #0f172a;padding-bottom:36px;margin-bottom:48px;">'
+        + '<div style="display:flex;align-items:center;gap:7px;margin-bottom:20px;">'
+        + '<svg width="18" height="18" viewBox="0 0 22 22" fill="none"><rect width="22" height="22" rx="6" fill="#6366f1"/><path d="M6 11L11 6L16 11L11 16Z" stroke="white" stroke-width="1.5" fill="none"/><circle cx="11" cy="11" r="2" fill="white"/></svg>'
+        + '<span style="font-size:12px;color:#475569;font-weight:600;">archlens-ai</span>'
+        + '</div>'
+        + '<h1 style="font-size:30px;font-weight:800;color:#e2e8f0;letter-spacing:-.04em;margin:0 0 10px;">'+esc(R.project.name)+'</h1>'
+        + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;">'
+        + '<span style="font-size:13px;color:#475569;">'+esc(R.project.type)+'</span>'
+        + '<span style="color:#1e293b;">·</span>'
+        + '<span style="font-size:14px;font-weight:700;color:'+scoreColor+';">Health Score: '+R.healthScore+'/100</span>'
+        + '<div style="flex:1;max-width:120px;height:4px;background:#0f172a;border-radius:2px;overflow:hidden;">'
+        + '<div style="width:'+R.healthScore+'%;height:100%;background:'+scoreColor+';border-radius:2px;"></div></div>'
+        + '</div>'
+        + ((R.project.techStack||[]).length
+          ? '<div style="display:flex;flex-wrap:wrap;gap:6px;">'
+            + (R.project.techStack||[]).map(t => '<span style="padding:3px 10px;background:#0f172a;border:1px solid #1e293b;border-radius:6px;font-size:12px;color:#94a3b8;">'+esc(t)+'</span>').join('')
+            + '</div>'
+          : '')
+        + '</div>';
+
+      // ── Executive summary ──
+      const summaryParts = [R.project.summary, R.macro.summary].filter(Boolean);
+      if (summaryParts.length) {
+        html += wrSec('Resumo Executivo', summaryParts.map(s => wrProse(s)).join('<div style="height:10px;"></div>'), '◈');
+      }
+
+      // ── Tech stack ──
+      if (R.macro.nodes.length) {
+        const nodesHtml = R.macro.nodes.map(n => {
+          const catColor = CAT_COLOR[n.category] || '#6366f1';
+          let body = '<div style="display:flex;align-items:flex-start;gap:12px;">'
+            + '<div style="width:3px;flex-shrink:0;border-radius:2px;background:'+catColor+';align-self:stretch;min-height:40px;"></div>'
+            + '<div style="flex:1;">'
+            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+            + '<span style="font-size:14px;font-weight:600;color:#e2e8f0;">'+esc(n.name)+'</span>'
+            + '<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 7px;border-radius:4px;background:'+catColor+'18;color:'+catColor+';">'+(CAT_LABEL[n.category]||n.category)+'</span>'
+            + (n.version ? '<span style="font-size:11px;color:#334155;font-family:monospace;">'+esc(n.version)+'</span>' : '')
+            + '</div>'
+            + (n.description ? '<p style="font-size:13px;color:#64748b;line-height:1.6;margin:0 0 8px;">'+esc(n.description)+'</p>' : '')
+            + ((n.issues||[]).length ? '<div style="margin-bottom:6px;">'+wrLabel('Problemas')+wrBullets(n.issues,'#ef4444')+'</div>' : '')
+            + ((n.suggestions||[]).length ? wrLabel('Sugestões')+wrBullets(n.suggestions,'#10b981') : '')
+            + '</div></div>';
+          return wrCard(body, catColor+'33');
+        }).join('');
+        html += wrSec('Arquitetura de Sistema', '<p style="font-size:13px;color:#475569;margin:0 0 16px;">'+esc(R.macro.summary||'')+'</p>'+nodesHtml, '⬡');
+      }
+
+      // ── Current modules ──
+      if (R.current.modules.length) {
+        const modsHtml = R.current.modules.map(m => {
+          const ms = (R.moduleScores||[]).find(s => s.moduleId === m.id);
+          const hc = hColor(m.health);
+          let body = '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:12px;">'
+            + '<div>'
+            + '<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">'
+            + '<div style="width:8px;height:8px;border-radius:50%;background:'+hc+';flex-shrink:0;"></div>'
+            + '<span style="font-size:15px;font-weight:600;color:#e2e8f0;">'+esc(m.name)+'</span>'
+            + '</div>'
+            + (m.path ? '<div style="font-size:11px;color:#334155;font-family:monospace;">'+esc(m.path)+'</div>' : '')
+            + '</div>'
+            + (ms ? '<div style="text-align:right;flex-shrink:0;">'
+              + '<div style="font-size:22px;font-weight:800;color:'+sColor(ms.score)+';">'+ms.score+'</div>'
+              + '<div style="font-size:10px;color:#334155;">score</div>'
+              + '</div>' : '')
+            + '</div>'
+            + (m.description ? '<p style="font-size:13px;color:#64748b;line-height:1.65;margin:0 0 12px;">'+esc(m.description)+'</p>' : '')
+            + (ms ? '<div style="margin-bottom:12px;">'
+              + wrScoreBar('Coesão',   ms.cohesion||0,  '#10b981')
+              + wrScoreBar('Acoplamento', ms.coupling||0, ms.coupling>60?'#ef4444':'#f59e0b')
+              + wrScoreBar('Tamanho',  ms.size||0,      '#6366f1')
+              + (ms.rationale ? '<p style="font-size:12px;color:#475569;line-height:1.5;margin:8px 0 0;font-style:italic;">'+esc(ms.rationale)+'</p>' : '')
+              + '</div>' : '')
+            + ((m.responsibilities||[]).length ? '<div style="margin-bottom:10px;">'+wrLabel('Responsabilidades')+wrBullets(m.responsibilities,'#6366f1')+'</div>' : '')
+            + ((m.dependencies||[]).length
+              ? '<div style="margin-bottom:10px;">'+wrLabel('Depende de')
+                + '<div style="display:flex;flex-wrap:wrap;gap:5px;">'
+                + m.dependencies.map(d => '<span style="font-size:12px;background:#0f172a;border:1px solid #1e293b;border-radius:5px;padding:2px 9px;color:#94a3b8;font-family:monospace;">'+esc(d)+'</span>').join('')
+                + '</div></div>' : '')
+            + ((m.issues||[]).length ? '<div style="margin-bottom:10px;">'+wrLabel('Problemas')+wrBullets(m.issues,'#ef4444')+'</div>' : '')
+            + ((m.suggestions||[]).length ? wrLabel('Sugestões')+wrBullets(m.suggestions,'#10b981') : '');
+          return wrCard(body, hc+'44');
+        }).join('');
+        const label = isSuggest ? 'Baseline (Arquitetura Ingênua)' : 'Arquitetura Atual';
+        html += wrSec(label, (R.current.summary ? '<p style="font-size:13px;color:#475569;margin:0 0 16px;">'+esc(R.current.summary)+'</p>' : '')+modsHtml, '▦');
+      }
+
+      // ── Suggested modules ──
+      if (R.suggested.modules.length) {
+        const sugHtml = R.suggested.modules.map(m => {
+          const hc = hColor(m.health);
+          let body = '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
+            + '<div style="width:8px;height:8px;border-radius:50%;background:'+hc+';flex-shrink:0;"></div>'
+            + '<span style="font-size:15px;font-weight:600;color:#e2e8f0;">'+esc(m.name)+'</span>'
+            + (m.isNew ? '<span style="font-size:10px;font-weight:700;background:rgba(16,185,129,.12);color:#34d399;padding:2px 7px;border-radius:4px;">NOVO</span>' : '')
+            + (m.diffStatus==='added'   ? '<span style="font-size:10px;font-weight:700;background:rgba(16,185,129,.12);color:#34d399;padding:2px 7px;border-radius:4px;">+ ADICIONADO</span>' : '')
+            + (m.diffStatus==='removed' ? '<span style="font-size:10px;font-weight:700;background:rgba(239,68,68,.12);color:#f87171;padding:2px 7px;border-radius:4px;">− REMOVER</span>' : '')
+            + (m.diffStatus==='changed' ? '<span style="font-size:10px;font-weight:700;background:rgba(245,158,11,.12);color:#fbbf24;padding:2px 7px;border-radius:4px;">~ ALTERADO</span>' : '')
+            + '</div>'
+            + (m.path ? '<div style="font-size:11px;color:#334155;font-family:monospace;margin-bottom:6px;">'+esc(m.path)+'</div>' : '')
+            + (m.description ? '<p style="font-size:13px;color:#64748b;line-height:1.65;margin:0 0 10px;">'+esc(m.description)+'</p>' : '')
+            + ((m.responsibilities||[]).length ? '<div style="margin-bottom:8px;">'+wrLabel('Responsabilidades')+wrBullets(m.responsibilities,'#6366f1')+'</div>' : '')
+            + ((m.dependencies||[]).length
+              ? '<div>'+wrLabel('Depende de')
+                + '<div style="display:flex;flex-wrap:wrap;gap:5px;">'
+                + m.dependencies.map(d => '<span style="font-size:12px;background:#0f172a;border:1px solid #1e293b;border-radius:5px;padding:2px 9px;color:#94a3b8;font-family:monospace;">'+esc(d)+'</span>').join('')
+                + '</div></div>' : '');
+          return wrCard(body, hc+'44');
+        }).join('');
+        const changes = R.suggested.changes || [];
+        let changesHtml = '';
+        if (changes.length) {
+          const impactColor = i => i==='high'?'#ef4444':i==='medium'?'#f59e0b':'#10b981';
+          changesHtml = '<div style="margin-top:24px;">'+wrLabel('Mudanças Propostas')
+            + changes.map(ch => wrCard(
+              '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+              + '<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:4px;background:'+impactColor(ch.impact)+'18;color:'+impactColor(ch.impact)+';">'+esc(ch.impact)+'</span>'
+              + '<span style="font-size:11px;color:#334155;font-family:monospace;">'+esc(ch.type)+'</span>'
+              + '</div>'
+              + '<p style="font-size:14px;font-weight:600;color:#e2e8f0;margin:0 0 6px;line-height:1.4;">'+esc(ch.description)+'</p>'
+              + '<p style="font-size:13px;color:#64748b;line-height:1.55;margin:0;">'+esc(ch.reason)+'</p>'
+            )).join('')
+            + '</div>';
+        }
+        html += wrSec('Arquitetura Proposta', (R.suggested.summary ? '<p style="font-size:13px;color:#475569;margin:0 0 16px;">'+esc(R.suggested.summary)+'</p>' : '')+sugHtml+changesHtml, '⊕');
+      }
+
+      // ── Anti-patterns & quality (analyze only) ──
+      if (!isSuggest) {
+        const aps = R.antiPatterns || [];
+        const scores = R.moduleScores || [];
+        const tc = R.testCoverage || null;
+        if (aps.length || scores.length || tc) {
+          let qHtml = '';
+          if (aps.length) {
+            qHtml += wrLabel('Anti-Patterns Detectados')
+              + aps.map(ap => wrCard(
+                '<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">'
+                + '<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;border-radius:4px;background:'+(AP_BG[ap.severity]||'#0a0f1a')+';color:'+(AP_COLOR[ap.severity]||'#f59e0b')+';">'+esc(ap.severity)+'</span>'
+                + '<span style="font-size:14px;font-weight:600;color:#e2e8f0;">'+(AP_LABEL[ap.type]||esc(ap.type||ap.name||''))+'</span>'
+                + '</div>'
+                + '<div style="font-size:12px;color:#475569;font-family:monospace;margin-bottom:6px;">'+esc(ap.moduleName||ap.module||'')+'</div>'
+                + '<p style="font-size:13px;color:#64748b;line-height:1.55;margin:0;">'+esc(ap.description)+'</p>',
+                (AP_COLOR[ap.severity]||'#f59e0b')+'33'
+              )).join('');
+          }
+          if (scores.length) {
+            const sorted = [...scores].sort((a,b) => a.score - b.score);
+            qHtml += '<div style="margin-top:20px;">'+wrLabel('Scores por Módulo')
+              + sorted.map(ms => '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #0a0f1e;">'
+                + '<span style="font-size:13px;color:#64748b;flex:1;">'+esc(ms.moduleId)+'</span>'
+                + '<div style="width:120px;height:4px;background:#0f172a;border-radius:2px;overflow:hidden;">'
+                + '<div style="width:'+ms.score+'%;height:100%;background:'+sColor(ms.score)+';border-radius:2px;"></div></div>'
+                + '<span style="font-size:12px;font-weight:700;color:'+sColor(ms.score)+';width:28px;text-align:right;">'+ms.score+'</span>'
+                + '</div>').join('')
+              + '</div>';
+          }
+          if (tc && tc.testFilesFound > 0) {
+            qHtml += '<div style="margin-top:20px;">'+wrLabel('Cobertura de Testes')
+              + wrCard('<div style="display:flex;gap:20px;margin-bottom:12px;">'
+                + '<div><div style="font-size:22px;font-weight:800;color:'+sColor(tc.coverageScore)+';">'+tc.coverageScore+'%</div><div style="font-size:10px;color:#334155;">score</div></div>'
+                + '<div><div style="font-size:22px;font-weight:800;color:#e2e8f0;">'+tc.coveredModules.length+'</div><div style="font-size:10px;color:#334155;">cobertos</div></div>'
+                + '<div><div style="font-size:22px;font-weight:800;color:#e2e8f0;">'+tc.uncoveredModules.length+'</div><div style="font-size:10px;color:#334155;">sem testes</div></div>'
+                + '</div>'
+                + ((tc.testPriorities||[]).length ? wrLabel('Prioridades')+wrBullets(tc.testPriorities,'#f59e0b') : ''))
+              + '</div>';
+          }
+          html += wrSec('Qualidade & Anti-Patterns', qHtml, '⚡');
+        }
+      }
+
+      // ── Cycles (analyze only) ──
+      if (!isSuggest && cycles.length) {
+        const cycHtml = cycles.map(c => wrCard(
+          '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px;">'
+          + c.map((id,i) => '<span style="font-size:12px;padding:3px 10px;border-radius:6px;background:'+(i===c.length-1?'rgba(239,68,68,.12)':'#0f172a')+';border:1px solid '+(i===c.length-1?'rgba(239,68,68,.3)':'#1e293b')+';color:'+(i===c.length-1?'#fca5a5':'#94a3b8')+';">'+esc(id)+'</span>'+(i<c.length-1?'<span style="color:#334155;">→</span>':'')).join('')
+          + '</div>'
+          + '<p style="font-size:13px;color:#64748b;line-height:1.55;margin:0;">Refatore extraindo uma interface ou serviço compartilhado que ambos os módulos dependam, eliminando a referência circular direta.</p>',
+          'rgba(239,68,68,.2)'
+        )).join('');
+        html += wrSec('Dependências Circulares', cycHtml, '↺');
+      }
+
+      // ── Decisions (suggest only) ──
+      if (isSuggest && (R.decisions||[]).length) {
+        const decHtml = R.decisions.map(d => wrCard(
+          '<div style="margin-bottom:10px;">'
+          + '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#10b981;margin-bottom:6px;">✓ decidido</div>'
+          + '<h3 style="font-size:15px;font-weight:700;color:#e2e8f0;margin:0 0 6px;">'+esc(d.title)+'</h3>'
+          + '<p style="font-size:13px;color:#64748b;line-height:1.6;margin:0;">'+esc(d.description)+'</p>'
+          + '</div>'
+          + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:10px;">'
+          + '<div>'+wrLabel('Prós')+wrBullets(d.pros,'#10b981')+'</div>'
+          + '<div>'+wrLabel('Contras')+wrBullets(d.cons,'#ef4444')+'</div>'
+          + '</div>'
+          + wrLabel('Alternativas Consideradas')+wrBullets(d.alternatives,'#6366f1'),
+          'rgba(16,185,129,.15)'
+        )).join('');
+        html += wrSec('Decisões Arquiteturais', decHtml, '◉');
+      }
+
+      // ── Roadmap (suggest only) ──
+      if (isSuggest && (R.roadmap||[]).length) {
+        const PHASE_COLORS = ['#6366f1','#10b981','#f59e0b','#3b82f6','#a855f7'];
+        const roadHtml = R.roadmap.map((ph, i) => {
+          const color = PHASE_COLORS[i % PHASE_COLORS.length];
+          const mods = (ph.modules||[]).map(id => { const m=(R.suggested.modules||[]).find(x=>x.id===id); return m?m.name:id; });
+          return wrCard(
+            '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">'
+            + '<div style="width:32px;height:32px;border-radius:8px;background:'+color+';display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex-shrink:0;">'+ph.phase+'</div>'
+            + '<div><div style="font-size:15px;font-weight:700;color:#e2e8f0;">'+esc(ph.title)+'</div><div style="font-size:12px;color:#475569;">'+esc(ph.duration)+'</div></div>'
+            + '</div>'
+            + '<p style="font-size:13px;color:#64748b;line-height:1.65;margin:0 0 12px;">'+esc(ph.description)+'</p>'
+            + wrBullets(ph.items, color)
+            + (mods.length ? '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:12px;">'
+              + mods.map(n=>'<span style="font-size:11px;padding:2px 9px;border-radius:5px;background:'+color+'18;border:1px solid '+color+'30;color:'+color+';">'+esc(n)+'</span>').join('')
+              + '</div>' : ''),
+            color+'33'
+          );
+        }).join('');
+        html += wrSec('Roadmap de Implementação', roadHtml, '→');
+      }
+
+      document.getElementById('written-content').innerHTML = html;
     }
 
     // ── Init ──────────────────────────────────────────────────────────────────

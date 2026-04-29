@@ -558,6 +558,56 @@
           <div class="feat-title">Monorepo Support</div>
           <div class="feat-desc">Detects workspaces under packages/, apps/, services/. Analyzes each independently and generates a consolidated health dashboard with aggregate stats.</div>
         </div>
+        <div class="feat-card">
+          <div class="feat-icon" style="border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.08);color:#818cf8;">📄</div>
+          <div class="feat-title">Written Report View</div>
+          <div class="feat-desc">One click switches the interactive graph into a scrollable document — full prose analysis, score breakdowns, and roadmap. Same data, shareable format. No extra AI call.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TWO VIEWS -->
+  <section style="border-top:1px solid var(--border);padding:88px 24px;">
+    <div class="section-inner">
+      <div class="section-label">Two views, one report</div>
+      <h2>Visual or written —<br/>your choice</h2>
+      <p class="section-sub" style="margin-bottom:48px;">Every report ships with both. No extra AI call — the written view is rendered from the same JSON Claude returned.</p>
+
+      <div class="mode-grid">
+        <div class="mode-card">
+          <div class="mode-tag" style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);color:var(--accent-lt);">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+            Visual
+          </div>
+          <div class="mode-title">Interactive graph</div>
+          <div class="mode-desc">Cytoscape.js diagram with clickable nodes, neighbor highlighting, real-time search, and a side panel showing full details per component or module.</div>
+          <div class="mode-tabs">
+            <span class="mode-tab" style="color:var(--accent-lt);">Sistema</span>
+            <span class="mode-tab" style="color:var(--green);">Estado Atual</span>
+            <span class="mode-tab" style="color:var(--teal);">Sugerido</span>
+            <span class="mode-tab" style="color:var(--yellow);">Diff</span>
+            <span class="mode-tab" style="color:var(--red);">Ciclos</span>
+            <span class="mode-tab" style="color:var(--purple);">Qualidade</span>
+          </div>
+        </div>
+
+        <div class="mode-card">
+          <div class="mode-tag" style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);color:#34d399;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Written
+          </div>
+          <div class="mode-title">Scrollable document</div>
+          <div class="mode-desc">Executive summary, per-node tech analysis, module cards with score bars, change rationale, anti-patterns, ADRs, and roadmap — all in readable prose.</div>
+          <div class="mode-tabs">
+            <span class="mode-tab">Resumo</span>
+            <span class="mode-tab">Sistema</span>
+            <span class="mode-tab">Módulos</span>
+            <span class="mode-tab">Qualidade</span>
+            <span class="mode-tab">Roadmap</span>
+          </div>
+          <div class="mode-cmd" style="font-size:12px;color:var(--muted);">Toggle with the <strong style="color:var(--text);">Relatório</strong> button in the report header</div>
+        </div>
       </div>
     </div>
   </section>

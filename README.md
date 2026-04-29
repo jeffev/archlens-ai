@@ -195,7 +195,11 @@ Exit code 1 is returned when `healthScore < minScore`, making it a blocking CI c
 
 ---
 
-## Report tabs
+## Report views
+
+Every report has two views, toggled with the **Relatório** button in the header:
+
+### Visual view (interactive graph)
 
 | Tab | Mode | Description |
 |---|---|---|
@@ -207,6 +211,21 @@ Exit code 1 is returned when `healthScore < minScore`, making it a blocking CI c
 | **Qualidade** | analyze | Anti-patterns, module score ranking, test coverage priorities |
 | **Decisões** | suggest | Architectural decision records with honest pros/cons and alternatives |
 | **Roadmap** | suggest | Phased implementation plan with realistic durations |
+
+### Written view (document)
+
+A scrollable document generated from the same Claude response — no extra AI call. Sections:
+
+| Section | Mode | Content |
+|---|---|---|
+| **Resumo Executivo** | both | Project summary and system overview in prose |
+| **Arquitetura de Sistema** | both | Each tech stack node with description, issues, and suggestions |
+| **Arquitetura Atual** | both | All modules with score bars (cohesion, coupling, size), responsibilities, dependencies |
+| **Arquitetura Proposta** | both | Proposed modules + change cards with impact and rationale |
+| **Qualidade & Anti-Patterns** | analyze | Anti-pattern list, module score ranking, test coverage |
+| **Dependências Circulares** | analyze | Cycle paths with fix guidance |
+| **Decisões Arquiteturais** | suggest | ADRs with honest pros, cons, and alternatives |
+| **Roadmap** | suggest | Phased implementation plan with deliverables |
 
 ---
 
